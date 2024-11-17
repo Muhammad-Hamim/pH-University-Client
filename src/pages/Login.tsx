@@ -4,7 +4,9 @@ import { useForm, SubmitHandler } from "react-hook-form";
 import { useLoginMutation } from "../redux/features/auth/authApi";
 import { useAppDispatch } from "../redux/hooks";
 import { verifyToken } from "../utils/verifyToken";
-import { setUser } from "../redux/features/auth/authSlice";
+import { setUser, TUser } from "../redux/features/auth/authSlice";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 interface LoginFormInputs {
   id: string;
@@ -17,12 +19,22 @@ const Login: React.FC = () => {
     handleSubmit,
     formState: { errors },
   } = useForm<LoginFormInputs>();
+  const navigate = useNavigate();
   const [login] = useLoginMutation();
   const dispatch = useAppDispatch();
   const onSubmit: SubmitHandler<LoginFormInputs> = async (data) => {
-    const res = await login(data).unwrap();
-    const user = verifyToken(res.data.accessToken);
-    dispatch(setUser({ user, token: res.data.accessToken }));
+    const toastId = toast.loading("logging in...");
+    try {
+      const res = await login(data).unwrap();
+      const user = verifyToken(res.data.accessToken) as TUser;
+      dispatch(setUser({ user, token: res.data.accessToken }));
+      toast.success("Logged in", { id: toastId });
+      navigate(
+        `/${user.role === "superAdmin" ? "admin" : user.role}/dashboard`
+      );
+    } catch {
+      toast.error("something went wrong", { id: toastId });
+    }
   };
 
   return (
